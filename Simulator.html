@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>시뮬레이터 룸 예약</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Montserrat', 'Arial', sans-serif;
+      background: #f9fafb;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 10px 0 5px;
+      font-size: 28px;
+      color: #b90000;
+    }
+
+    .button-container {
+      margin: 15px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .language-btn {
+      background: #b90000;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .language-btn:hover { background: #a00000; }
+
+    .date-picker-container {
+      margin: 15px 0;
+    }
+
+    #date-picker {
+      padding: 10px 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      width: 220px;
+      text-align: center;
+      font-family: 'Montserrat', 'Arial', sans-serif; /* 폰트 적용 */
+      color: #444; 
+      background-color: #f9fafb;
+    }
+
+    /* Webkit - 캘린더 스타일링 */
+    #date-picker::-webkit-datetime-edit {
+      font-family: 'Montserrat', 'Arial', sans-serif;
+      color: #444;
+    }
+
+    #date-picker::-webkit-inner-spin-button,
+    #date-picker::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+    }
+
+    .section-title {
+      margin: 30px 0 10px;
+      font-size: 22px;
+      color: #444;
+      width: 100%;
+      text-align: left;
+      max-width: 1200px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .pc-block {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      transition: transform 0.2s ease;
+    }
+
+    .pc-block:hover { transform: translateY(-5px); }
+
+    .time-slot-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .time-slot {
+      background: #f5f7fa;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .time-slot:hover { background: #e0e7ff; }
+
+    .reserved {
+      background: #c9e4ff;
+      color: #003366;
+      font-weight: bold;
+      border: 1px solid #b90000;
+    }
+
+    .logo-container {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .logo-container img {
+      width: 700px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo-container">
+    <img src="./LH_LOGO.png" alt="Company Logo">
+  </div>
+
+  <h1 id="title">L-H Battery Simulator Reservation</h1>
+
+  <div class="date-picker-container">
+    <input type="date" id="date-picker" onchange="changeDate()" min="2025-01-01" max="2025-12-31">
+  </div>
+
+  <h2 class="section-title">Electrode Simulator</h2>
+  <div class="container" id="electrode-container"></div>
+
+  <h2 class="section-title">Assembly Simulator</h2>
+  <div class="container" id="assembly-container"></div>
+
+  <script>
+    const electrodePCs = ['Electrode PC-A', 'Electrode PC-B'];
+    const assemblyPCs = ['Assembly PC-1', 'Assembly PC-2', 'Assembly PC-3', 'Assembly PC-4'];
+    const hours = [
+      '06:00~07:00', '07:00~08:00',
+      '08:00~09:00', '09:00~10:00', 
+      '10:00~11:00', '11:00~12:00',
+      '12:00~13:00', '13:00~14:00',
+      '14:00~15:00', '15:00~16:00',
+      '16:00~17:00', '17:00~18:00'
+    ];
+
+    let reservations = JSON.parse(localStorage.getItem('reservations')) || {};
+    let selectedDate = new Date().toISOString().split('T')[0];
+    document.getElementById('date-picker').value = selectedDate;
+
+    function changeDate() {
+      selectedDate = document.getElementById('date-picker').value;
+      renderAll();
+    }
+
+    function toggleSlot(slot, pc, hour) {
+      const key = `${selectedDate}_${pc}_${hour}`;
+      if (!reservations[key]) {
+        const name = prompt('Enter your name:');
+        if (name) {
+          reservations[key] = { name };
+          saveReservations();
+          renderAll();
+        }
+      } else {
+        if (confirm('Cancel the reservation?')) {
+          delete reservations[key];
+          saveReservations();
+          renderAll();
+        }
+      }
+    }
+
+    function saveReservations() {
+      localStorage.setItem('reservations', JSON.stringify(reservations));
+    }
+
+    function renderPCBlocks(pcs, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      pcs.forEach(pc => {
+        const block = document.createElement('div');
+        block.className = 'pc-block';
+        const title = document.createElement('h3');
+        title.textContent = pc;
+        block.appendChild(title);
+
+        const slotContainer = document.createElement('div');
+        slotContainer.className = 'time-slot-container';
+
+        hours.forEach(hour => {
+          const key = `${selectedDate}_${pc}_${hour}`;
+          const slot = document.createElement('div');
+          slot.className = 'time-slot';
+          slot.textContent = reservations[key] ? `${hour} - ${reservations[key].name}` : hour;
+          if (reservations[key]) slot.classList.add('reserved');
+          slot.onclick = () => toggleSlot(slot, pc, hour);
+          slotContainer.appendChild(slot);
+        });
+
+        block.appendChild(slotContainer);
+        container.appendChild(block);
+      });
+    }
+
+    function renderAll() {
+      renderPCBlocks(electrodePCs, 'electrode-container');
+      renderPCBlocks(assemblyPCs, 'assembly-container');
+    }
+
+    renderAll();
+  </script>
+
+</body>
+</html>
